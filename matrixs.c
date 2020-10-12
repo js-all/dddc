@@ -52,16 +52,64 @@ void m4identity(mat4 out)
 
 void m4translate(mat4 out, mat4 a, float x, float y, float z)
 {
-    out[0][3] = a[0][3] + x;
-    out[1][3] = a[1][3] + y;
-    out[2][3] = a[2][3] + z;
+    if (a == out)
+    {
+        out[3][0] = a[0][0] * x + a[1][0] * y + a[2][0] * z + a[3][0];
+        out[3][1] = a[0][1] * x + a[1][1] * y + a[2][1] * z + a[3][1];
+        out[3][2] = a[0][2] * x + a[1][2] * y + a[2][2] * z + a[3][2];
+        out[3][3] = a[0][3] * x + a[1][3] * y + a[2][3] * z + a[3][3];
+    }
+    else
+    {
+        a[0][0] = a[0][0];
+        a[0][1] = a[0][1];
+        a[0][2] = a[0][2];
+        a[0][3] = a[0][3];
+        a[1][0] = a[1][0];
+        a[1][1] = a[1][1];
+        a[1][2] = a[1][2];
+        a[1][3] = a[1][3];
+        a[2][0] = a[2][0];
+        a[2][1] = a[2][1];
+        a[2][2] = a[2][2];
+        a[2][3] = a[2][3];
+        out[0][0] = a[0][0];
+        out[0][1] = a[0][1];
+        out[0][2] = a[0][2];
+        out[0][3] = a[0][3];
+        out[1][0] = a[1][0];
+        out[1][1] = a[1][1];
+        out[1][2] = a[1][2];
+        out[1][3] = a[1][3];
+        out[2][0] = a[2][0];
+        out[2][1] = a[2][1];
+        out[2][2] = a[2][2];
+        out[2][3] = a[2][3];
+        out[3][0] = a[0][0] * x + a[1][0] * y + a[2][0] * z + a[3][0];
+        out[3][1] = a[0][1] * x + a[1][1] * y + a[2][1] * z + a[3][1];
+        out[3][2] = a[0][2] * x + a[1][2] * y + a[2][2] * z + a[3][2];
+        out[3][3] = a[0][3] * x + a[1][3] * y + a[2][3] * z + a[3][3];
+    }
 }
 
 void m4scale(mat4 out, mat4 a, float sx, float sy, float sz)
 {
+    out[0][0] = a[0][0] * sx;
+    out[0][1] = a[0][1] * sx;
+    out[0][2] = a[0][2] * sx;
     out[0][3] = a[0][3] * sx;
+    out[1][0] = a[1][0] * sy;
+    out[1][1] = a[1][1] * sy;
+    out[1][2] = a[1][2] * sy;
     out[1][3] = a[1][3] * sy;
+    out[2][0] = a[2][0] * sz;
+    out[2][1] = a[2][1] * sz;
+    out[2][2] = a[2][2] * sz;
     out[2][3] = a[2][3] * sz;
+    out[3][0] = a[3][0];
+    out[3][1] = a[3][1];
+    out[3][2] = a[3][2];
+    out[3][3] = a[3][3];
 }
 
 void m4rotate(mat4 out, mat4 a, float rad, vec3 axis)
@@ -169,6 +217,48 @@ void m4perspective(mat4 out, float fovy, float near, float far, float aspect)
     }
 }
 
+void m4set(mat4 out, mat4 in)
+{
+    out[0][0] = in[0][0];
+    out[0][1] = in[0][1];
+    out[0][2] = in[0][2];
+    out[0][3] = in[0][3];
+    out[1][0] = in[1][0];
+    out[1][1] = in[1][1];
+    out[1][2] = in[1][2];
+    out[1][3] = in[1][3];
+    out[2][0] = in[2][0];
+    out[2][1] = in[2][1];
+    out[2][2] = in[2][2];
+    out[2][3] = in[2][3];
+    out[3][0] = in[3][0];
+    out[3][1] = in[3][1];
+    out[3][2] = in[3][2];
+    out[3][3] = in[3][3];
+}
+
+void m4print(mat4 a)
+{
+    printf("[\n");
+    printf("   [%f, ", a[0][0]);
+    printf("   %f, ", a[0][1]);
+    printf("   %f, ", a[0][2]);
+    printf("   %f]\n", a[0][3]);
+    printf("   [%f, ", a[1][0]);
+    printf("   %f, ", a[1][1]);
+    printf("   %f, ", a[1][2]);
+    printf("   %f]\n", a[1][3]);
+    printf("   [%f, ", a[2][0]);
+    printf("   %f, ", a[2][1]);
+    printf("   %f, ", a[2][2]);
+    printf("   %f]\n", a[2][3]);
+    printf("   [%f, ", a[3][0]);
+    printf("   %f, ", a[3][1]);
+    printf("   %f, ", a[3][2]);
+    printf("   %f]\n", a[3][3]);
+    printf("]\n");
+}
+
 void v3add(vec3 out, vec3 a, vec3 b)
 {
     out[0] = a[0] + b[0];
@@ -253,4 +343,18 @@ void v3applyMat4(vec3 out, vec3 a, mat4 b)
     out[0] = b[0][0] * a[0] + b[0][1] * a[1] + b[0][2] * a[2] + b[0][3];
     out[1] = b[1][0] * a[0] + b[1][1] * a[1] + b[1][2] * a[2] + b[1][3];
     out[2] = b[2][0] * a[0] + b[2][1] * a[1] + b[2][2] * a[2] + b[2][3];
+}
+
+void v3set(vec3 out, vec3 in)
+{
+    out[0] = in[0];
+    out[1] = in[1];
+    out[0] = in[2];
+}
+
+void v3print(vec3 a)
+{
+    printf("[%f, ", a[0]);
+    printf("%f, ", a[1]);
+    printf("%f]\n", a[2]);
 }
