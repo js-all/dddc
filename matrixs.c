@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <math.h>
+#include <stdbool.h>
 
 typedef float mat4[4][4];
 typedef float vec3[3];
+typedef float vec2[2];
+typedef vec3 triangle[3];
 
 void m4mul(mat4 out, mat4 a, mat4 b)
 {
@@ -322,7 +325,7 @@ float v3dot(vec3 a, vec3 b)
 
 float v3sqrLen(vec3 a)
 {
-    return pow(a[0], 2) + pow(a[1], 2) + pow(a[2], 2);
+    return v3dot(a, a);
 }
 
 float v3len(vec3 a)
@@ -357,4 +360,46 @@ void v3print(vec3 a)
     printf("[%f, ", a[0]);
     printf("%f, ", a[1]);
     printf("%f]\n", a[2]);
+}
+
+float v2dot(vec2 a, vec2 b)
+{
+    return a[0] * b[0] + a[1] * b[1];
+}
+
+void v2sub(vec2 out, vec2 a, vec2 b)
+{
+    out[0] = a[0] - b[0];
+    out[1] = a[1] - b[1];
+}
+
+void v3toV2(vec2 out, vec3 a) {
+    out[0] = a[0];
+    out[1] = a[1];
+}
+
+void v2toV3(vec3 out, vec2 a) {
+    out[0] = a[0];
+    out[1] = a[1];
+    out[2] = 1;
+}
+
+void v2toBarycentric(vec2 out, vec2 a, triangle triangle) {
+    float dx = a[0]-triangle[2][0];
+    float dy = a[0]-triangle[2][1];
+    float dx21 = triangle[2][0]-triangle[1][0];
+    float dy12 = triangle[1][1]-triangle[2][1];
+    float D = dy12*(triangle[0][0]-triangle[2][0]) + dx21*(triangle[0][1]-triangle[2][1]);
+    float s = dy12*dx + dx21*dy;
+    float t = (triangle[2][1]-triangle[0][1])*dx + (triangle[0][0]-triangle[2][0])*dy;
+    out[0] = s;
+    out[1] = t;
+}
+
+bool v2isInTriangle(vec2 p, triangle triangle) {
+    vec2 barycentric;
+    v2toBarycentric(barycentric, p, triangle);
+    float s = barycentric[0];
+    float t = barycentric[1];
+    return s>=0 && t>=0 && s <= 1 && t <= 1 && s + t <= 1;
 }

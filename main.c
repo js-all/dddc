@@ -3,10 +3,12 @@
 #include <time.h>
 #include "matrixs.c"
 #include <string.h>
+#include <stdbool.h>
 
 #define zNear 0.1
 #define zFar 100
 #define meshLen 8
+#define triangleCount 12
 #define size 30
 
 vec3 objRot = {0, 0, 0};
@@ -25,6 +27,21 @@ static vec3 mesh[meshLen] = {
     {1, 1, -1},
     {-1, 1, 1},
     {1, 1, 1}};
+
+static int triangles[triangleCount][3] = {
+    {0, 1, 2},
+    {1, 3, 2},
+    {6, 7, 2},
+    {7, 3, 2},
+    {4, 6, 0},
+    {6, 2, 0},
+    {5, 7, 3},
+    {5, 3, 1},
+    {4, 5, 0},
+    {5, 1, 0},
+    {4, 5, 6},
+    {5, 7, 6}
+};
 
 void computeModelMatrix(mat4 out, vec3 scale, vec3 rotation, vec3 translation)
 {
@@ -92,12 +109,26 @@ int main(int argc, char *argv[])
         char resStr[size * size];
         initString(resStr);
 
-        for (int j = 0; j < meshLen; j++)
-        {
-            int px = floor((projectedPoints[j][0] + 1.0) / 2.0 * size);
-            int py = floor((projectedPoints[j][1] + 1.0) / 2.0 * size);
-            resStr[px * size + py] = 'O';
+        for(int y = 0; y < size; y++) {
+            for(int x = 0; x < size; x++) {
+                int stringLoc = y * size + x;
+                vec2 pixel = {x, y};
+                for(int i = 0; i < triangleCount; i++) {
+                    float *t1 = mesh[triangles[i][0]];
+                    float *t2 = mesh[triangles[i][1]];
+                    float *t3 = mesh[triangles[i][2]];
+                    triangle tri = {
+                        {t1[0], t1[1], t1[2]},
+                        {t2[0], t2[1], t2[2]},
+                        {t3[0], t3[1], t3[2]}
+                    };
+                    if(v2isInTriangle(pixel, tri)) {
+                        resStr[stringLoc] = '#';
+                    }
+                }
+            }
         }
+
         drawString(resStr);
         printf("\n");
         struct timespec ts;
