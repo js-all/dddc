@@ -341,18 +341,19 @@ void v3normalize(vec3 out, vec3 a)
     out[2] = a[2] / len;
 }
 
-void v3applyMat4(vec3 out, vec3 a, mat4 b)
+float v3applyMat4(vec3 out, vec3 a, mat4 b)
 {
     out[0] = b[0][0] * a[0] + b[0][1] * a[1] + b[0][2] * a[2] + b[0][3];
     out[1] = b[1][0] * a[0] + b[1][1] * a[1] + b[1][2] * a[2] + b[1][3];
     out[2] = b[2][0] * a[0] + b[2][1] * a[1] + b[2][2] * a[2] + b[2][3];
+    return   b[3][0] * a[0] + b[3][1] * a[1] + b[3][2] * a[2] + b[3][3];
 }
 
 void v3set(vec3 out, vec3 in)
 {
     out[0] = in[0];
     out[1] = in[1];
-    out[0] = in[2];
+    out[2] = in[2];
 }
 
 void v3print(vec3 a)
@@ -362,9 +363,20 @@ void v3print(vec3 a)
     printf("%f]\n", a[2]);
 }
 
+void v3map(vec3 out, vec3 in, float fromMin, float fromMax, float toMin, float toMax) {
+    out[0] = (in[0] - fromMin) / (fromMax - fromMin) * (toMax - toMin) + toMin;
+    out[1] = (in[1] - fromMin) / (fromMax - fromMin) * (toMax - toMin) + toMin;
+    out[2] = (in[2] - fromMin) / (fromMax - fromMin) * (toMax - toMin) + toMin;
+}
+
 float v2dot(vec2 a, vec2 b)
 {
     return a[0] * b[0] + a[1] * b[1];
+}
+
+void v2print(vec2 a) {
+    printf("[%f, ", a[0]);
+    printf("%f]\n", a[1]);
 }
 
 void v2sub(vec2 out, vec2 a, vec2 b)
@@ -395,6 +407,11 @@ void v2toBarycentric(vec2 out, vec2 a, triangle triangle) {
     out[0] = s;
     out[1] = t;
 }
+
+float flMap(float num, float fmin, float fmax, float tmin, float tmax) {
+    return (num - fmin) / (fmax - fmin) * (tmax - tmin) + tmin;
+}
+
 
 bool v2isInTriangle(vec2 p, triangle triangle) {
     vec2 barycentric;

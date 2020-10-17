@@ -73,7 +73,7 @@ void initString(char string[size * size])
 {
     for (int i = 0; i < size * size; i++)
     {
-        string[i] = ' ';
+        string[i] = '-';
     }
 }
 
@@ -86,7 +86,13 @@ int main(int argc, char *argv[])
 {
     fov = rad(90);
     objRot[0] = rad(45);
-
+    triangle tr = {
+        {0, 0, 0},
+        {1, 0, 0},
+        {0.5, -1, 0}
+    };
+    vec2 point = {0.5, -2};
+    printf("%d", v2isInTriangle(point, tr) );
     while (1)
     {
         mat4 modelMatrix;
@@ -102,7 +108,8 @@ int main(int argc, char *argv[])
         for (int i = 0; i < meshLen; i++)
         {
             vec3 resPoint;
-            v3applyMat4(resPoint, mesh[i], masterMatrix);
+            float w = v3applyMat4(resPoint, mesh[i], masterMatrix);
+            //v3divFloat(resPoint, resPoint, 1);
             v3set(projectedPoints[i], resPoint);
         };
 
@@ -112,21 +119,44 @@ int main(int argc, char *argv[])
         for(int y = 0; y < size; y++) {
             for(int x = 0; x < size; x++) {
                 int stringLoc = y * size + x;
-                vec2 pixel = {x, y};
+                vec2 pixel;
+                pixel[0] = flMap(x, 0, size, -1, 1);
+                pixel[1] = flMap(y, 0, size, -1, 1);
                 for(int i = 0; i < triangleCount; i++) {
-                    float *t1 = mesh[triangles[i][0]];
-                    float *t2 = mesh[triangles[i][1]];
-                    float *t3 = mesh[triangles[i][2]];
+                    vec3 t1;
+                    vec3 t2;
+                    vec3 t3;
+                    v3set(t1, projectedPoints[triangles[i][0]]);
+                    v3set(t2, projectedPoints[triangles[i][1]]);
+                    v3set(t3, projectedPoints[triangles[i][2]]);
                     triangle tri = {
                         {t1[0], t1[1], t1[2]},
                         {t2[0], t2[1], t2[2]},
-                        {t3[0], t3[1], t3[2]}
+                        {t3[0], t3[1], t3[2]},
                     };
-                    if(v2isInTriangle(pixel, tri)) {
-                        resStr[stringLoc] = '#';
+                    if(v2isInTriangle(pixel, tri) && resStr[stringLoc] != ' ') {
+                        // printf("pixel: ");
+                        // v2print(pixel);
+                        // printf("triangle: \n");
+                        // vec2 p0;
+                        // vec2 p1;
+                        // vec2 p2;
+                        // v3toV2(p0, tri[0]);
+                        // v3toV2(p1, tri[1]);
+                        // v3toV2(p2, tri[2]);
+                        // v2print(p0);
+                        // v2print(p1);
+                        // v2print(p2);
+                        // printf("/--/\n");
+                        resStr[stringLoc] = ' ';
                     }
                 }
             }
+        }
+
+        for(int i = 0; i < meshLen; i++) 
+        {
+            resStr[(int)floor(flMap(projectedPoints[i][1], -1, 1, 0, size) * size + flMap(projectedPoints[i][0], -1, 1, 0, size))] = '#';
         }
 
         drawString(resStr);
@@ -142,3 +172,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
