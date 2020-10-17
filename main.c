@@ -11,6 +11,11 @@
 #define triangleCount 12
 #define size 20
 
+/**
+ * 
+ * * check https://www.geeksforgeeks.org/check-whether-a-given-point-lies-inside-a-triangle-or-not/
+ * 
+ */
 vec3 objRot = {0, 0, 0};
 vec3 objSca = {.25, .25, .25};
 vec3 objTra = {0, 0, 1};
