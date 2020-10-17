@@ -55,7 +55,7 @@ void m4identity(mat4 out)
 
 void m4translate(mat4 out, mat4 a, float x, float y, float z)
 {
-    if (a == out)
+    /* if (a == out)
     {
         out[3][0] = a[0][0] * x + a[1][0] * y + a[2][0] * z + a[3][0];
         out[3][1] = a[0][1] * x + a[1][1] * y + a[2][1] * z + a[3][1];
@@ -92,7 +92,10 @@ void m4translate(mat4 out, mat4 a, float x, float y, float z)
         out[3][1] = a[0][1] * x + a[1][1] * y + a[2][1] * z + a[3][1];
         out[3][2] = a[0][2] * x + a[1][2] * y + a[2][2] * z + a[3][2];
         out[3][3] = a[0][3] * x + a[1][3] * y + a[2][3] * z + a[3][3];
-    }
+    } */
+    out[0][3] += x;
+    out[1][3] += y;
+    out[2][3] += z;
 }
 
 void m4scale(mat4 out, mat4 a, float sx, float sy, float sz)
@@ -369,9 +372,28 @@ void v3map(vec3 out, vec3 in, float fromMin, float fromMax, float toMin, float t
     out[2] = (in[2] - fromMin) / (fromMax - fromMin) * (toMax - toMin) + toMin;
 }
 
+void v2sub(vec2 out, vec2 a, vec2 b) {
+    out[0] = a[0] - b[0];
+    out[1] = a[1] - b[1];
+}
+
+void v2add(vec2 out, vec2 a, vec2 b) {
+    out[0] = a[0] + b[0];
+    out[1] = a[1] + b[1];
+}
+
 float v2dot(vec2 a, vec2 b)
 {
     return a[0] * b[0] + a[1] * b[1];
+}
+
+float v2len(vec2 a) {
+    return sqrt(a[0] * a[0] + a[1] * a[1]);
+}
+
+void v2mul(vec2 out, vec2 a, vec2 b) {
+    out[0] = a[0] * b[0];
+    out[1] = a[1] * b[1];
 }
 
 void v2print(vec2 a) {
@@ -379,11 +401,6 @@ void v2print(vec2 a) {
     printf("%f]\n", a[1]);
 }
 
-void v2sub(vec2 out, vec2 a, vec2 b)
-{
-    out[0] = a[0] - b[0];
-    out[1] = a[1] - b[1];
-}
 
 void v3toV2(vec2 out, vec3 a) {
     out[0] = a[0];
@@ -394,6 +411,12 @@ void v2toV3(vec3 out, vec2 a) {
     out[0] = a[0];
     out[1] = a[1];
     out[2] = 1;
+}
+
+void v2normalize(vec2 out, vec2 a) {
+    float len = v2len(a);
+    out[0] = a[0] / len;
+    out[1] = a[1] / len;
 }
 
 void v2toBarycentric(vec2 out, vec2 a, triangle triangle) {
@@ -412,11 +435,50 @@ float flMap(float num, float fmin, float fmax, float tmin, float tmax) {
     return (num - fmin) / (fmax - fmin) * (tmax - tmin) + tmin;
 }
 
-
-bool v2isInTriangle(vec2 p, triangle triangle) {
-    vec2 barycentric;
-    v2toBarycentric(barycentric, p, triangle);
-    float s = barycentric[0];
-    float t = barycentric[1];
-    return s>=0 && t>=0 && s <= 1 && t <= 1 && s + t <= 1;
+float v2computeAreaTriangle(vec2 tri[3]) {
+    vec2 side1[2] = {*tri[0], *tri[1]};
+    vec2 side2[2] = {*tri[1], *tri[2]};
+    vec2 a;
+    v2sub(a, side1[1], side1[0]);
+    v2normalize(a, a);
+    vec2 v;
+    v2sub(v, side2[1], side2[0]);
+    float dot = v2dot(v, a);
+    vec2 dotv = {dot, dot};
+    vec2 p;
+    v2mul(p, a, dotv);
+    vec2 point;
+    v2add(point, side1[1], p);
+    vec2 h;
+    v2sub(h, side2[1], point);
+    vec2 b;
+    v2sub(a, side1[1], side1[0]);
+    float hLen = v2len(h);
+    float bLen = v2len(b);
+    return (hLen + bLen) / 2;
 }
+
+int v2isInTriangle(vec2 p, vec2 triangle[3]) {
+    vec2 t1[3] = {
+        *p,
+        *triangle[0],
+        *triangle[1]
+    };
+    vec2 t2[3] = {
+        *p,
+        *triangle[1],
+        *triangle[2]
+    };
+    vec2 t3[3] = {
+        *p,
+        *triangle[2],
+        *triangle[0]
+    };
+    float area0 = v2computeAreaTriangle(triangle);
+    float area1 = v2computeAreaTriangle(t1);
+    float area2 = v2computeAreaTriangle(t2);
+    float area3 = v2computeAreaTriangle(t3);
+    float areaSum = area1 + area2 + area3;
+    return areaSum == area0;
+}
+
