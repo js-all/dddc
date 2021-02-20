@@ -1,15 +1,17 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
-#include "matrixs.c"
+#include "matrixs.h"
 #include <string.h>
 #include <stdbool.h>
 
-#define zNear 0.1
-#define zFar 100
-#define meshLen 8
-#define triangleCount 12
-#define size 20
+#define Z_NEAR 0.1
+#define Z_FAR 100
+#define MESH_LENGHT 8
+#define TRIANGLE_COUNT 12
+#define SIZE 30
+#define EMPTY_CHAR ' '
+#define CORNER_CHAR 'O'
 
 /**
  * 
@@ -23,7 +25,7 @@ vec3 objTra = {0, 0, 1};
 float fov;
 float aspect = 16 / 9;
 
-static vec3 mesh[meshLen] = {
+static vec3 mesh[MESH_LENGHT] = {
     {-1, -1, -1},
     {1, -1, -1},
     {-1, -1, 1},
@@ -33,7 +35,7 @@ static vec3 mesh[meshLen] = {
     {-1, 1, 1},
     {1, 1, 1}};
 
-static int triangles[triangleCount][3] = {
+static int triangles[TRIANGLE_COUNT][3] = {
     {0, 1, 2},
     {1, 3, 2},
     {6, 7, 2},
@@ -62,23 +64,23 @@ void computeModelMatrix(mat4 out, vec3 scale, vec3 rotation, vec3 translation)
     m4translate(out, out, translation[0], translation[1], translation[2]);
 }
 
-void drawString(char string[size * size])
+void drawString(char string[SIZE * SIZE])
 {
     for (int s = 0; s < strlen(string); s++)
     {
         printf("%c", string[s]);
-        if (s > 0 && (s + 1) % size == 0)
+        if (s > 0 && (s + 1) % SIZE == 0)
         {
             printf("\n");
         }
     }
 }
 
-void initString(char string[size * size])
+void initString(char string[SIZE * SIZE])
 {
-    for (int i = 0; i < size * size; i++)
+    for (int i = 0; i < SIZE * SIZE; i++)
     {
-        string[i] = '.';
+        string[i] = EMPTY_CHAR;
     }
 }
 
@@ -97,20 +99,20 @@ int main(int argc, char *argv[])
         {0.5, -1}
     };
     vec2 point = {0.5, -2};
-    printf("%d", v2isInTriangle(point, tr) );
+    //printf("%d", v2isInTriangle(point, tr) );
     while (1)
     {
         mat4 modelMatrix;
         computeModelMatrix(modelMatrix, objSca, objRot, objTra);
         mat4 projectionMatrix;
         m4identity(projectionMatrix);
-        m4perspective(projectionMatrix, fov, zNear, zFar, aspect);
+        m4perspective(projectionMatrix, fov, Z_NEAR, Z_FAR, aspect);
         mat4 masterMatrix;
         m4mul(masterMatrix, modelMatrix, projectionMatrix);
 
-        vec3 projectedPoints[meshLen];
+        vec3 projectedPoints[MESH_LENGHT];
 
-        for (int i = 0; i < meshLen; i++)
+        for (int i = 0; i < MESH_LENGHT; i++)
         {
             vec3 resPoint;
             float w = v3applyMat4(resPoint, mesh[i], masterMatrix);
@@ -118,16 +120,16 @@ int main(int argc, char *argv[])
             v3set(projectedPoints[i], resPoint);
         };
 
-        char resStr[size * size];
+        char resStr[SIZE * SIZE];
         initString(resStr);
 
-        for(int x = 0; x < size; x++) {
-            for(int y = 0; y < size; y++) {
-                int stringLoc = x * size + y;
+        for(int x = 0; x < SIZE; x++) {
+            for(int y = 0; y < SIZE; y++) {
+                int stringLoc = x * SIZE + y;
                 vec2 pixel;
-                pixel[0] = flMap(x, 0, size, -1, 1);
-                pixel[1] = flMap(y, 0, size, -1, 1);
-                for(int i = 0; i < triangleCount; i++) {
+                pixel[0] = flMap(x, 0, SIZE, -1, 1);
+                pixel[1] = flMap(y, 0, SIZE, -1, 1);
+                for(int i = 0; i < TRIANGLE_COUNT; i++) {
                     vec3 t1;
                     vec3 t2;
                     vec3 t3;
@@ -139,7 +141,7 @@ int main(int argc, char *argv[])
                         {t2[0], t2[1]},
                         {t3[0], t3[1]},
                     };
-                    if(v2isInTriangle(pixel, tri) && resStr[stringLoc] != 'O') {
+        /*            if(v2isInTriangle(pixel, tri) && resStr[stringLoc] != 'O') {
                         // printf("pixel: ");
                         // v2print(pixel);
                         // printf("triangle: \n");
@@ -155,26 +157,26 @@ int main(int argc, char *argv[])
                         // printf("/--/\n");
                         resStr[stringLoc] = 'O';
                     }
-                }
+          */      }
             }
         }
 
-        for (int j = 0; j < meshLen; j++)
+        for (int j = 0; j < MESH_LENGHT; j++)
         {
-            int px = floor((projectedPoints[j][0] + 1.0) / 2.0 * size);
-            int py = floor((projectedPoints[j][1] + 1.0) / 2.0 * size);
-            resStr[px * size + py] = '#';
+            int px = floor((projectedPoints[j][0] + 1.0) / 2.0 * SIZE);
+            int py = floor((projectedPoints[j][1] + 1.0) / 2.0 * SIZE);
+            resStr[px * SIZE + py] = CORNER_CHAR;
         }
 
         drawString(resStr);
         printf("\n");
         struct timespec ts;
-        ts.tv_nsec = 0;
-        ts.tv_sec = 1;
+        ts.tv_nsec = 100000000;
+        ts.tv_sec = 0;
         nanosleep(&ts, &ts);
-        //objRot[0] += rad(5);
-        //objRot[1] += rad(10);
-        objRot[1] += rad(10);
+        objRot[0] += rad(1);
+        objRot[1] += rad(2);
+        objRot[2] += rad(2);
     }
 
     return 0;
