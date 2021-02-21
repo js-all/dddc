@@ -1,184 +1,170 @@
-#include <stdio.h>
-#include <math.h>
-#include <time.h>
 #include "matrixs.h"
-#include <string.h>
+#include "vectors.h"
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 
 #define Z_NEAR 0.1
-#define Z_FAR 100
-#define MESH_LENGHT 8
-#define TRIANGLE_COUNT 12
-#define SIZE 30
+#define Z_FAR 100.0
+#define WIDTH 140
+#define HEIGHT 37
 #define EMPTY_CHAR ' '
 #define CORNER_CHAR 'O'
+#define FOV_IN_DEGREES 100.0
 
-/**
- * 
- * * check https://www.geeksforgeeks.org/check-whether-a-given-point-lies-inside-a-triangle-or-not/
- * 
- */
-vec3 objRot = {0, 0, 0};
-vec3 objSca = {.25, .25, .25};
-vec3 objTra = {0, 0, 1};
-
-float fov;
-float aspect = 16 / 9;
-
-static vec3 mesh[MESH_LENGHT] = {
-    {-1, -1, -1},
-    {1, -1, -1},
-    {-1, -1, 1},
-    {1, -1, 1},
-    {-1, 1, -1},
-    {1, 1, -1},
-    {-1, 1, 1},
-    {1, 1, 1}};
-
-static int triangles[TRIANGLE_COUNT][3] = {
-    {0, 1, 2},
-    {1, 3, 2},
-    {6, 7, 2},
-    {7, 3, 2},
-    {4, 6, 0},
-    {6, 2, 0},
-    {5, 7, 3},
-    {5, 3, 1},
-    {4, 5, 0},
-    {5, 1, 0},
-    {4, 5, 6},
-    {5, 7, 6}
+struct Transforms {
+  vec3 translation;
+  vec3 scale; // needs to be in that exact order otherwise it crashes because of stack smashing
+  vec3 rotation;
 };
 
-void computeModelMatrix(mat4 out, vec3 scale, vec3 rotation, vec3 translation)
-{
+struct Camera {
+    double fov;
+    float aspect;
+    float near;
+    float far;
+    struct Transforms transforms;
+};
 
-    vec3 axisX = {1, 0, 0};
-    vec3 axisY = {0, 1, 0};
-    vec3 axisZ = {0, 0, 1};
-    m4identity(out);
-    m4scale(out, out, scale[0], scale[1], scale[2]);
-    m4rotate(out, out, rotation[0], axisX);
-    m4rotate(out, out, rotation[1], axisY);
-    m4rotate(out, out, rotation[2], axisZ);
-    m4translate(out, out, translation[0], translation[1], translation[2]);
+struct Object {
+  struct Transforms transforms;
+  // vector of pointers of vec3
+  vector mesh;
+  // vector of pointers of vec3i (each triangle stored as an int[3] with the indexes of the used points in the mesh vector)
+  vector triangles;
+};
+
+static float aspect = (float)WIDTH / HEIGHT;
+static double fov = FOV_IN_DEGREES / 180.0 * M_PI;
+static int area = WIDTH * HEIGHT;
+
+void transforms_computeMatrix(struct Transforms *transforms, mat4 *out, bool invert) {
+  if(invert) { // mostly for the camera, to be able to compute the view matrix
+    vec3 translation;
+    vec3 scale;
+    vec3 rotation;
+    vec3_negate(&translation, &transforms->translation);
+    vec3_negate(&scale, &transforms->scale);
+    vec3_negate(&rotation, &transforms->rotation);
+    mat4_fromScaleRotationTranslation(out, &scale, &rotation, &translation);
+  } else {
+    mat4_fromScaleRotationTranslation(out, &transforms->scale, &transforms->rotation, &transforms->translation);
+  }
 }
 
-void drawString(char string[SIZE * SIZE])
-{
-    for (int s = 0; s < strlen(string); s++)
-    {
-        printf("%c", string[s]);
-        if (s > 0 && (s + 1) % SIZE == 0)
-        {
-            printf("\n");
-        }
+void camera_computeViewMatrix(struct Camera *camera, mat4 *out) {
+  transforms_computeMatrix(&camera->transforms, out, true);
+}
+void camera_computePerspectiveMatrix(struct Camera *camera, mat4 *out) {
+  mat4_perspective(out, out, camera->fov, camera->aspect, camera->near, camera->far);
+}
+// initialize object, mostly just allocate memory to the vectors
+//
+// mesh and triangles can be empty arrays, if so, meshSize and trianglesSize should be 0
+int object_init(struct Object *obj, vec3 (*mesh)[], vec3i (*triangles)[], int meshSize, int trianglesSize) {
+  int res1, res2;
+
+  res1 = vector_init(&obj->mesh, meshSize);
+  // push all elements in the vector (probably not verry efficient but it will
+  // be run once at startup so not a problem)
+  for (int i = 0; i < meshSize; i++) {
+    vector_push(&obj->mesh, (&mesh)[i]);
+  }
+  res2 = vector_init(&obj->triangles, trianglesSize);
+  for (int i = 0; i < trianglesSize; i++) {
+    vector_push(&obj->triangles, (&triangles)[i]);
+  }
+  if (res1 != 0) {
+    printf(
+        "ERROR: Main, error in main whilst initailizing object mesh vector\n");
+    return -1;
+  }
+  if (res2 != 0) {
+    printf("ERROR: Main, error in main whilst initailizing object triangles "
+           "vector\n");
+    return -1;
+  }
+  return 0;
+}
+void object_computeModelMatrix(struct Object *obj, mat4 *out) {
+  transforms_computeMatrix(&obj->transforms, out, false);
+}
+// allocate memory for a string long enough for every pixel of the display, and fill it with empty char
+char* initRenderingString() {
+  char *str = malloc((area + 1) * sizeof(char));
+  memset(str, (int) EMPTY_CHAR, area * sizeof(char));
+  str[area] = '\0';
+  return str;
+}
+// pretty useless right now, might become bigger later
+void freeRenderingString(char* str) {
+  free(str);
+}
+// print the rendreing string with new lines character to make the output the right dimensions
+void printRenderingString(char* str) {
+  for(int i = 0; i < area; i += WIDTH) {
+    printf("%.*s\n", WIDTH, str + (i * sizeof(char)));
+  }
+}
+
+int main() {
+  char *renderingString = initRenderingString();
+  struct Camera camera;
+  struct Object obj;
+
+  camera.fov = fov;
+  camera.aspect = aspect;
+  camera.near = Z_NEAR;
+  camera.far = Z_FAR;
+
+  vec3_set(&camera.transforms.translation, 0, 0, 0);
+  vec3_set(&camera.transforms.scale, 1, 1, 1);
+  vec3_set(&camera.transforms.rotation, 0, 0, 0);
+  
+  vec3 mesh[] = {{-1, -1, -10}, {-1, 1, -10}, {1, -1, -10}};
+  vec3i triangles[] = {{0, 1, 2}};
+  object_init(&obj, &mesh, &triangles, sizeof(mesh) / sizeof(vec3), sizeof(triangles) / sizeof(vec3i));
+  vec3_set(&obj.transforms.translation, 0, 0, 0);
+  vec3_set(&obj.transforms.scale, 1, 1, 1);
+  vec3_set(&obj.transforms.rotation, 0, 0, 0);
+
+  {
+    mat4 viewMatrix;
+    mat4 perspectiveMatrix;
+    mat4 modelMatrix;
+    mat4 modelViewMatrix;
+    mat4 masterMatrix;
+
+    camera_computeViewMatrix(&camera, &viewMatrix);
+    camera_computePerspectiveMatrix(&camera, &perspectiveMatrix);
+    object_computeModelMatrix(&obj, &modelMatrix);
+
+    mat4_multiply(&modelViewMatrix, &modelMatrix, &viewMatrix);
+    mat4_multiply(&masterMatrix, &modelViewMatrix, &perspectiveMatrix);
+
+    for(int i = 0; i < obj.mesh.used; i++) {
+      vec4 transformedVertex;
+      mat4_applyVec3(&transformedVertex, &masterMatrix, (vec3*)(obj.mesh.data[i]));
+      vec3 projectedVertex;
+      vec3_fromV4(&projectedVertex, &transformedVertex);
+      vec3_divf(&projectedVertex, &projectedVertex, transformedVertex[3]);
+      // at this point v3 is:
+      // contained in -1, 1 in every axis
+      // positive y up, x sideways, and -z depth
+      vec2i mappedVertex = {
+        (int) floor(flmap(projectedVertex[0], -1, 1, 0, WIDTH)),
+        (int) floor(flmap(projectedVertex[1], -1, 1, HEIGHT, 0))
+      };
+      int renderingStringIndex = mappedVertex[1] * WIDTH + mappedVertex[0];
+      renderingString[renderingStringIndex] = CORNER_CHAR;
     }
+  }
+
+  printRenderingString(renderingString);
+
+  freeRenderingString(renderingString);
+
+  return 0;
 }
-
-void initString(char string[SIZE * SIZE])
-{
-    for (int i = 0; i < SIZE * SIZE; i++)
-    {
-        string[i] = EMPTY_CHAR;
-    }
-}
-
-float rad(float in)
-{
-    return in / 180 * M_PI;
-}
-
-int main(int argc, char *argv[])
-{
-    fov = rad(90);
-    objRot[0] = rad(45);
-    vec2 tr[3] = {
-        {0, 0},
-        {1, 0},
-        {0.5, -1}
-    };
-    vec2 point = {0.5, -2};
-    //printf("%d", v2isInTriangle(point, tr) );
-    while (1)
-    {
-        mat4 modelMatrix;
-        computeModelMatrix(modelMatrix, objSca, objRot, objTra);
-        mat4 projectionMatrix;
-        m4identity(projectionMatrix);
-        m4perspective(projectionMatrix, fov, Z_NEAR, Z_FAR, aspect);
-        mat4 masterMatrix;
-        m4mul(masterMatrix, modelMatrix, projectionMatrix);
-
-        vec3 projectedPoints[MESH_LENGHT];
-
-        for (int i = 0; i < MESH_LENGHT; i++)
-        {
-            vec3 resPoint;
-            float w = v3applyMat4(resPoint, mesh[i], masterMatrix);
-            //v3divFloat(resPoint, resPoint, 1);
-            v3set(projectedPoints[i], resPoint);
-        };
-
-        char resStr[SIZE * SIZE];
-        initString(resStr);
-
-        for(int x = 0; x < SIZE; x++) {
-            for(int y = 0; y < SIZE; y++) {
-                int stringLoc = x * SIZE + y;
-                vec2 pixel;
-                pixel[0] = flMap(x, 0, SIZE, -1, 1);
-                pixel[1] = flMap(y, 0, SIZE, -1, 1);
-                for(int i = 0; i < TRIANGLE_COUNT; i++) {
-                    vec3 t1;
-                    vec3 t2;
-                    vec3 t3;
-                    v3set(t1, projectedPoints[triangles[i][0]]);
-                    v3set(t2, projectedPoints[triangles[i][1]]);
-                    v3set(t3, projectedPoints[triangles[i][2]]);
-                    vec2 tri[3] = {
-                        {t1[0], t1[1]},
-                        {t2[0], t2[1]},
-                        {t3[0], t3[1]},
-                    };
-        /*            if(v2isInTriangle(pixel, tri) && resStr[stringLoc] != 'O') {
-                        // printf("pixel: ");
-                        // v2print(pixel);
-                        // printf("triangle: \n");
-                        // vec2 p0;
-                        // vec2 p1;
-                        // vec2 p2;
-                        // v3toV2(p0, tri[0]);
-                        // v3toV2(p1, tri[1]);
-                        // v3toV2(p2, tri[2]);
-                        // v2print(p0);
-                        // v2print(p1);
-                        // v2print(p2);
-                        // printf("/--/\n");
-                        resStr[stringLoc] = 'O';
-                    }
-          */      }
-            }
-        }
-
-        for (int j = 0; j < MESH_LENGHT; j++)
-        {
-            int px = floor((projectedPoints[j][0] + 1.0) / 2.0 * SIZE);
-            int py = floor((projectedPoints[j][1] + 1.0) / 2.0 * SIZE);
-            resStr[px * SIZE + py] = CORNER_CHAR;
-        }
-
-        drawString(resStr);
-        printf("\n");
-        struct timespec ts;
-        ts.tv_nsec = 100000000;
-        ts.tv_sec = 0;
-        nanosleep(&ts, &ts);
-        objRot[0] += rad(1);
-        objRot[1] += rad(2);
-        objRot[2] += rad(2);
-    }
-
-    return 0;
-}
-
